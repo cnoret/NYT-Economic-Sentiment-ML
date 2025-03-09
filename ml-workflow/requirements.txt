@@ -8,3 +8,4 @@ transformers
 matplotlib
 prophet
 pytest-json-report
+jq
