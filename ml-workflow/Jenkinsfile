@@ -38,7 +38,7 @@ pipeline {
                         -e PYTHONPATH=/app \
                         ${DOCKER_IMAGE} \
                         bash -c "cd /app && pytest tests/ --json-report --json-report-file=/test_output/test-results.json && \
-                        cp /test_output/test-results.json /tmp/test-results.json 
+                        cp /test_output/test-results.json /tmp/test-results.json"
                     """
                     sh 'ls -la /tmp'
                     // Afficher les résultats JSON dans la console Jenkins
