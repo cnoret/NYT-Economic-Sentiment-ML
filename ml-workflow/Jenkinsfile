@@ -43,6 +43,13 @@ pipeline {
                 } 
             }
         
+            /*post {
+                always {
+                    junit '/tmp/unit-tests.xml'  // Publish test results
+                }
+            }*/
+        }
+
         stage('Verify Persistence') {
             steps {
                 script {
@@ -61,12 +68,6 @@ pipeline {
                     //sh 'echo "test de persistance" > /tmp/persistance-test.txt'
                 }
             }
-        }
-            /*post {
-                always {
-                    junit '/tmp/unit-tests.xml'  // Publish test results
-                }
-            }*/
         }
 
         /*stage('Run Tests Inside Docker Container') {
