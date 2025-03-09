@@ -39,6 +39,7 @@ pipeline {
                         ${DOCKER_IMAGE} \
                         bash -c "cd /app && pytest tests/ --junitxml=/test_output/unit-tests.xml;ls -la /test_output;cp /test_output/unit-tests.xml /tmp/unit-tests.xml; cat /tmp/unit-tests.xml"
                     """
+                    sh 'ls -la /tmp'
                 } 
             }
         
@@ -52,9 +53,15 @@ pipeline {
                         ${DOCKER_IMAGE} \
                         bash -c "ls -la /verification/unit-tests.xml && echo 'Le fichier persiste entre les steps!' || echo 'Fichier non trouvé'"
                     """
+                    
+                    // Alternativement, tu peux juste exécuter une commande shell sur l'hôte Jenkins
+                    //sh 'if [ -f "/tmp/unit-tests.xml" ]; then echo "Fichier trouvé sur l\'hôte Jenkins"; else echo "Fichier non trouvé"; fi'
+                    
+                    // Tu peux aussi créer un nouveau fichier pour vérifier qu'il est accessible dans les étapes suivantes
+                    //sh 'echo "test de persistance" > /tmp/persistance-test.txt'
                 }
-    }
-}
+            }
+        }
             /*post {
                 always {
                     junit '/tmp/unit-tests.xml'  // Publish test results
