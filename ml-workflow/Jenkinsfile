@@ -33,33 +33,19 @@ pipeline {
             steps {
                 script{
                     sh """
-                    docker run --rm \
-                        -v "/tmp:/test_output" \
-                        -e PYTHONPATH=/app \
-                        ${DOCKER_IMAGE} \
-                        bash -c "cd /app && pytest tests/ --json-report --json-report-file=/test_output/test-results.json && \
-                        cp /test_output/test-results.json /tmp/test-results.json"
+                    docker run --rm \\
+                        -v "/tmp:/test_output" \\
+                        -e PYTHONPATH=/app \\
+                        ${DOCKER_IMAGE} \\
+                        bash -c "cd /app && pytest tests/ --json-report --json-report-file=/test_output/test-results.json"
                     """
-                    sh 'ls -la /tmp'
-                    // Afficher les résultats JSON dans la console Jenkins
                     sh 'echo "Résultats des tests en JSON:" && cat /tmp/test-results.json'
 
-                    // Envoyer le fichier JSON à Slack
-                    sh """
-                    # Formater le JSON pour l'envoi via curl
-                    FORMATTED_JSON=\$(cat /tmp/test-results.json | jq -c '.')
+                    // Vérifier si le fichier a été créé
+                    sh 'ls -la /tmp/test-results.json || echo "Fichier non trouvé"'
                     
-                    # Créer un message Slack avec le résumé des tests
-                    TEST_SUMMARY=\$(cat /tmp/test-results.json | jq -r '.summary | "Tests: \\(.total), Passed: \\(.passed), Failed: \\(.failed), Errors: \\(.errors), Skipped: \\(.skipped)"')
-                    
-                    /*# Envoyer le message et le fichier JSON comme snippet
-                    curl -F file=@/tmp/test-results.json \
-                        -F "initial_comment=Résultats des tests pour ${env.JOB_NAME} #${env.BUILD_NUMBER}\\n\$TEST_SUMMARY" \
-                        -F channels=${env.SLACK_CHANNEL} \
-                        -F token=${env.SLACK_BOT_TOKEN} \
-                        https://slack.com/api/files.upload
-                    */
-                    """
+                    // Afficher le contenu si le fichier existe
+                    sh 'if [ -f "/tmp/test-results.json" ]; then echo "Résultats des tests en JSON:"; cat /tmp/test-results.json; else echo "Fichier JSON non trouvé"; fi'
                 } 
             }
         
