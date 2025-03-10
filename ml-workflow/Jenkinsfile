@@ -39,6 +39,15 @@ pipeline {
                         ${DOCKER_IMAGE} \\
                         bash -c \"cd /app && pytest tests/ --json-report --json-report-file=/test_output/test-results.json && chmod 666 /test_output/test-results.json && sync\"
                     """
+                    sh """
+                    # Vérifier exactement quels fichiers existent
+                    echo "===== Contenu du dossier /tmp ====="
+                    ls -la /tmp
+                    echo "===== Recherche spécifique du fichier ====="
+                    find /tmp -name "test-results.json" -type f
+                    echo "===== Vérification avec readlink ====="
+                    readlink -f /tmp/test-results.json || echo "Fichier introuvable"
+                    """
                     sh 'echo "Résultats des tests en JSON:" && cat /tmp/test-results.json'
 
                     // Vérifier si le fichier a été créé
