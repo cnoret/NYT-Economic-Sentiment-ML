@@ -28,19 +28,12 @@ pipeline {
                 sh 'docker run --rm ${DOCKER_IMAGE} bash -c "pip install -r /app/requirements.txt"'
             }
         }
-        
+
         stage('Run Unit Tests') {
             steps {
                 script {
-                    // Exécuter pytest et rediriger directement la sortie standard
-                    sh """
-                    docker run --rm \\
-                        -e PYTHONPATH=/app \\
-                        ${DOCKER_IMAGE} \\
-                        bash -c "cd /app && pytest tests/ -v" > /tmp/test-output.txt
-                    """
-                    
-                    // Utiliser une approche plus simple pour générer le rapport JSON
+                    // Exécuter pytest dans un shell de l'image ${DOCKER_IMAGE} nancée dans blue-ocean
+                    // et rediriger directement la sortie standard pour générer le rapport JSON dans /tmp de blue-ocean
                     sh """
                     docker run --rm \\
                         -e PYTHONPATH=/app \\
@@ -49,7 +42,6 @@ pipeline {
                     """
                     
                     // Afficher les fichiers
-                    sh "echo '===== Sortie des tests =====' && cat /tmp/test-output.txt || echo 'Fichier de sortie non trouvé'"
                     sh "echo '===== Résumé du rapport =====' && cat /tmp/test-results.json || echo 'Rapport JSON non trouvé'"
                     
                     // Créer un résumé simple du fichier JSON
