@@ -28,7 +28,7 @@ pipeline {
                 sh 'docker run --rm ${DOCKER_IMAGE} bash -c "pip install -r /app/requirements.txt"'
             }
         }
-
+        
         stage('Run Unit Tests') {
             steps {
                 script {
@@ -40,17 +40,32 @@ pipeline {
                         bash -c "cd /app && pytest tests/ -v" > /tmp/test-output.txt
                     """
                     
-                    // Aussi, générer le JSON avec pytest-json
+                    // Utiliser une approche plus simple pour générer le rapport JSON
                     sh """
                     docker run --rm \\
                         -e PYTHONPATH=/app \\
                         ${DOCKER_IMAGE} \\
-                        bash -c "cd /app && python -c 'import json, pytest; import io; from contextlib import redirect_stdout; f = io.StringIO(); with redirect_stdout(f): pytest.main([\"tests/\", \"--json-report\", \"--json-report-file=none\"]); report = json.loads(open(\".report.json\").read()); print(json.dumps(report))'" > /tmp/test-results.json
+                        bash -c 'cd /app && pytest tests/ --json-report && cat .report.json' > /tmp/test-results.json
                     """
                     
                     // Afficher les fichiers
-                    sh "echo '===== Sortie des tests =====' && cat /tmp/test-output.txt"
-                    sh "echo '===== Résumé du rapport =====' && cat /tmp/test-results.json | grep -o '\"summary\":{[^}]*}'"
+                    sh "echo '===== Sortie des tests =====' && cat /tmp/test-output.txt || echo 'Fichier de sortie non trouvé'"
+                    sh "echo '===== Résumé du rapport =====' && cat /tmp/test-results.json || echo 'Rapport JSON non trouvé'"
+                    
+                    // Créer un résumé simple du fichier JSON
+                    sh '''
+                    if [ -f "/tmp/test-results.json" ]; then
+                        # Extraire les chiffres du résumé
+                        PASSED=$(grep -o '\"passed\":[0-9]*' /tmp/test-results.json | cut -d: -f2)
+                        FAILED=$(grep -o '\"failed\":[0-9]*' /tmp/test-results.json | cut -d: -f2)
+                        TOTAL=$(grep -o '\"total\":[0-9]*' /tmp/test-results.json | cut -d: -f2)
+                        
+                        echo "===== Résumé formaté ====="
+                        echo "Tests exécutés: $TOTAL"
+                        echo "Tests réussis:  $PASSED"
+                        echo "Tests échoués:  $FAILED"
+                    fi
+                    '''
                 }
             }
         }
