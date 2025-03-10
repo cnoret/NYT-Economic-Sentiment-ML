@@ -47,10 +47,15 @@ pipeline {
         stage('Verify Persistence') {
             steps {
                 script {
-                    sh """
-                    "ls -la /tmp/tests-results.json && echo 'Le fichier persiste entre les steps!' || echo 'Fichier non trouvé'"
-                    """
-                    
+                    sh '''
+                    if [ -f /tmp/tests-results.json ]; then
+                        echo "Le fichier existe et persiste entre les steps!"
+                        ls -l /tmp/tests-results.json
+                    else
+                        echo "Fichier non trouvé"
+                        exit 1
+                    fi
+                    '''
                 }
             }
         }
