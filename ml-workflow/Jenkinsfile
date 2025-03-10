@@ -32,8 +32,7 @@ pipeline {
         stage('Run Unit Tests') {
             steps {
                 script {
-                    // Exécuter pytest dans un shell de l'image ${DOCKER_IMAGE} nancée dans blue-ocean
-                    // et rediriger directement la sortie standard pour générer le rapport JSON dans /tmp de blue-ocean
+                    // Exécuter pytest avec rapport JSON
                     sh """
                     docker run --rm \\
                         -e PYTHONPATH=/app \\
@@ -41,23 +40,41 @@ pipeline {
                         bash -c 'cd /app && pytest tests/ --json-report && cat .report.json' > /tmp/test-results.json
                     """
                     
-                    // Afficher les fichiers
-                    sh "echo '===== Résumé du rapport =====' && cat /tmp/test-results.json || echo 'Rapport JSON non trouvé'"
-                    
-                    // Créer un résumé simple du fichier JSON
+                    // Créer un résumé plus informatif basé sur la structure du JSON
                     sh '''
                     if [ -f "/tmp/test-results.json" ]; then
-                        # Extraire les chiffres du résumé
-                        PASSED=$(grep -o '\"passed\":[0-9]*' /tmp/test-results.json | cut -d: -f2)
-                        FAILED=$(grep -o '\"failed\":[0-9]*' /tmp/test-results.json | cut -d: -f2)
-                        TOTAL=$(grep -o '\"total\":[0-9]*' /tmp/test-results.json | cut -d: -f2)
+                        echo "===== RÉSUMÉ DES TESTS ====="
                         
-                        echo "===== Résumé formaté ====="
-                        echo "Tests exécutés: $TOTAL"
-                        echo "Tests réussis:  $PASSED"
-                        echo "Tests échoués:  $FAILED"
+                        # Extraire les métriques principales
+                        PASSED=$(grep -o '"passed":[0-9]*' /tmp/test-results.json | head -1 | cut -d: -f2)
+                        TOTAL=$(grep -o '"total":[0-9]*' /tmp/test-results.json | head -1 | cut -d: -f2)
+                        DURATION=$(grep -o '"duration":[0-9.]*' /tmp/test-results.json | head -1 | cut -d: -f2)
+                        
+                        # Afficher le résumé général
+                        echo "✅ Tests réussis: $PASSED/$TOTAL"
+                        echo "⏱️ Durée totale: $DURATION secondes"
+                        
+                        # Lister les tests individuels
+                        echo ""
+                        echo "===== DÉTAILS DES TESTS ====="
+                        grep -o '"nodeid":"tests/test_train.py::[^"]*' /tmp/test-results.json | cut -d: -f3- | sed 's/"//g' | while read -r TEST; do
+                            echo "✓ $TEST"
+                        done
+                        
+                        # Vérifier s'il y a des avertissements
+                        WARNINGS=$(grep -o '"warnings":\[\{' /tmp/test-results.json | wc -l)
+                        if [ "$WARNINGS" -gt 0 ]; then
+                            echo ""
+                            echo "⚠️ $WARNINGS avertissement(s) détecté(s)"
+                        fi
+                    else
+                        echo "Rapport JSON non trouvé"
                     fi
                     '''
+                    
+                    // Archiver le rapport JSON complet pour référence future
+                    sh "mkdir -p reports && cp /tmp/test-results.json reports/"
+                    archiveArtifacts artifacts: 'reports/**', allowEmptyArchive: true
                 }
             }
         }
