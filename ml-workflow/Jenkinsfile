@@ -63,8 +63,11 @@ pipeline {
         stage('Display Results') {
             steps {
                 script {
-                    // Utiliser le script externe pour afficher les résultats
-                    sh 'python3 ${WORKSPACE}/scripts/display_tests_results.py /tmp/tests-results.json'
+                    sh """
+                    cat /tmp/tests-results.json | docker run --rm -i \\
+                        ${DOCKER_IMAGE} \\
+                        bash -c "cat > /tmp/tests-results.json && python3 /app/scripts/display_tests_results.py /tmp/tests-results.json"
+                    """
                 }
             }
         }
