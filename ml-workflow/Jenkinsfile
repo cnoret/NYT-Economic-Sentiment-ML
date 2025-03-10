@@ -33,21 +33,23 @@ pipeline {
             steps {
                 script{
                     sh """
+                    # Créer un fichier test dans /tmp de l'hôte
+                    echo "test de montage" > /tmp/test-volume-mount.txt
+
+                    # Vérifier s'il est visible dans le conteneur
+                    docker run --rm \\
+                        -v "/tmp:/test_output" \\
+                        ${DOCKER_IMAGE} \\
+                        bash -c "cat /test_output/test-volume-mount.txt || echo 'Fichier test non trouvé dans le conteneur'"
+                    """
+                    sh """
                     docker run --rm \\
                         -v "/tmp:/test_output" \\
                         -e PYTHONPATH=/app \\
                         ${DOCKER_IMAGE} \\
-                        bash -c \"cd /app && pytest tests/ --json-report --json-report-file=/test_output/test-results.json && chmod 666 /test_output/test-results.json && sync\"
+                        bash -c "cd /app && pytest tests/ --json-report --json-report-file=/test_output/test-results.json && chmod 666 /test_output/test-results.json && sync"
                     """
-                    sh """
-                    # Vérifier exactement quels fichiers existent
-                    echo "===== Contenu du dossier /tmp ====="
-                    ls -la /tmp
-                    echo "===== Recherche spécifique du fichier ====="
-                    find /tmp -name "test-results.json" -type f
-                    echo "===== Vérification avec readlink ====="
-                    readlink -f /tmp/test-results.json || echo "Fichier introuvable"
-                    """
+                    
                     sh 'echo "Résultats des tests en JSON:" && cat /tmp/test-results.json'
 
                     // Vérifier si le fichier a été créé
