@@ -32,10 +32,13 @@ pipeline {
         stage('Run Unit Tests') {
             steps {
                 script {
+                    // Utiliser le workspace Jenkins qui est plus fiable que /tmp
+                    def workspace = pwd()
+                    
                     // Créer un volume Docker nommé
                     sh "docker volume create pytest-results"
                     
-                    // Exécuter les tests et sauvegarder les résultats dans le volume
+                    // Exécuter les tests
                     sh """
                     docker run --rm \\
                         -v "pytest-results:/test_output" \\
@@ -44,18 +47,33 @@ pipeline {
                         bash -c "cd /app && pytest tests/ --json-report --json-report-file=/test_output/test-results.json"
                     """
                     
-                    // Récupérer le contenu à l'aide d'un conteneur intermédiaire
+                    // Vérifier le contenu du volume
                     sh """
+                    echo "===== Contenu du volume pytest-results ====="
                     docker run --rm \\
                         -v "pytest-results:/data" \\
-                        -v "/tmp:/output" \\
                         busybox \\
-                        cp /data/test-results.json /output/test-results.json
+                        find /data -type f | xargs ls -la
                     """
                     
-                    // Vérifier si le fichier a été créé et afficher son contenu
-                    sh 'ls -la /tmp/test-results.json || echo "Fichier non trouvé"'
-                    sh 'if [ -f "/tmp/test-results.json" ]; then echo "Résultats des tests en JSON:"; cat /tmp/test-results.json; else echo "Fichier JSON non trouvé"; fi'
+                    // Essayons une méthode différente pour récupérer le fichier
+                    sh """
+                    # Créer un répertoire pour les résultats
+                    mkdir -p ${workspace}/test-results
+                    
+                    # Copier le fichier depuis le volume vers le workspace
+                    docker run --rm \\
+                        -v "pytest-results:/data" \\
+                        -v "${workspace}/test-results:/output" \\
+                        busybox \\
+                        sh -c "find /data -name '*.json' -exec cp {} /output/ \\;"
+                    """
+                    
+                    // Vérifier si le fichier a été copié
+                    sh "ls -la ${workspace}/test-results"
+                    
+                    // Afficher le contenu s'il existe
+                    sh "if [ -f \"${workspace}/test-results/test-results.json\" ]; then cat ${workspace}/test-results/test-results.json; else echo 'Fichier toujours introuvable'; fi"
                 }
             }
         }
