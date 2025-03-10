@@ -29,51 +29,60 @@ pipeline {
             }
         }
 
-stage('Run Unit Tests') {
-    steps {
-        script {
-            // Créer le répertoire pour les résultats
-            sh "mkdir -p \$(pwd)/results"
-            
-            // Exécuter pytest en mode verbeux et capturer la sortie texte
-            sh """
-            docker run --rm \\
-                -e PYTHONPATH=/app \\
-                ${DOCKER_IMAGE} \\
-                bash -c "cd /app && python -m pytest tests/ -v" > \$(pwd)/results/test-output.txt
-            """
-            
-            // Afficher les résultats
-            sh "cat \$(pwd)/results/test-output.txt"
-            
-            // Créer un rapport simple en JSON avec un script shell
-            sh """
-            # Compter les tests réussis et échoués
-            PASSED=\$(grep -c "PASSED" \$(pwd)/results/test-output.txt || echo 0)
-            FAILED=\$(grep -c "FAILED" \$(pwd)/results/test-output.txt || echo 0)
-            TOTAL=\$((\$PASSED + \$FAILED))
-            
-            # Générer un JSON simple
-            echo "{" > \$(pwd)/results/summary.json
-            echo "  \\"summary\\": {" >> \$(pwd)/results/summary.json
-            echo "    \\"passed\\": \$PASSED," >> \$(pwd)/results/summary.json
-            echo "    \\"failed\\": \$FAILED," >> \$(pwd)/results/summary.json
-            echo "    \\"total\\": \$TOTAL" >> \$(pwd)/results/summary.json
-            echo "  }" >> \$(pwd)/results/summary.json
-            echo "}" >> \$(pwd)/results/summary.json
-            
-            # Afficher le résumé
-            echo "===== Résumé des tests ====="
-            echo "Tests exécutés: \$TOTAL"
-            echo "Tests réussis: \$PASSED"
-            echo "Tests échoués: \$FAILED"
-            """
-            
-            // Archiver les résultats des tests
-            archiveArtifacts artifacts: 'results/**', allowEmptyArchive: true
+        stage('Run Unit Tests') {
+            steps {
+                script {
+                    // Créer le répertoire pour les résultats
+                    sh "mkdir -p \$(pwd)/results"
+                    
+                    // Exécuter pytest en mode verbeux et capturer la sortie texte
+                    sh """
+                    docker run --rm \\
+                        -e PYTHONPATH=/app \\
+                        ${DOCKER_IMAGE} \\
+                        bash -c "cd /app && python -m pytest tests/ -v" > \$(pwd)/results/test-output.txt
+                    """
+                    
+                    // Afficher les résultats
+                    sh "cat \$(pwd)/results/test-output.txt"
+                    
+                    // Créer un rapport simple en JSON avec un script shell plus robuste
+                    sh '''
+                    # Compter les tests réussis et échoués de façon fiable
+                    PASSED=$(grep -c "PASSED" $(pwd)/results/test-output.txt 2>/dev/null || echo 0)
+                    FAILED=$(grep -c "FAILED" $(pwd)/results/test-output.txt 2>/dev/null || echo 0)
+                    
+                    # Assurer que ces valeurs sont bien des nombres entiers
+                    PASSED=$(echo $PASSED | tr -cd '0-9')
+                    FAILED=$(echo $FAILED | tr -cd '0-9')
+                    TOTAL=$((PASSED + FAILED))
+                    
+                    # Générer un JSON simple
+                    echo "{" > $(pwd)/results/summary.json
+                    echo "  \\"summary\\": {" >> $(pwd)/results/summary.json
+                    echo "    \\"passed\\": $PASSED," >> $(pwd)/results/summary.json
+                    echo "    \\"failed\\": $FAILED," >> $(pwd)/results/summary.json
+                    echo "    \\"total\\": $TOTAL" >> $(pwd)/results/summary.json
+                    echo "  }" >> $(pwd)/results/summary.json
+                    echo "}" >> $(pwd)/results/summary.json
+                    
+                    # Afficher le résumé
+                    echo "===== Résumé des tests ====="
+                    echo "Tests exécutés: $TOTAL"
+                    echo "Tests réussis: $PASSED"
+                    echo "Tests échoués: $FAILED"
+                    
+                    # Afficher le JSON généré
+                    echo "===== Rapport JSON ====="
+                    cat $(pwd)/results/summary.json
+                    '''
+                    
+                    // Archiver les résultats des tests
+                    archiveArtifacts artifacts: 'results/**', allowEmptyArchive: true
+                }
+            }
         }
-    }
-}
+        
         stage('Verify Persistence') {
             steps {
                 script {
