@@ -32,48 +32,30 @@ pipeline {
         stage('Run Unit Tests') {
             steps {
                 script {
-                    // Utiliser le workspace Jenkins qui est plus fiable que /tmp
                     def workspace = pwd()
                     
-                    // Créer un volume Docker nommé
-                    sh "docker volume create pytest-results"
-                    
-                    // Exécuter les tests
+                    // Approche 1: Générer le JSON et l'afficher directement via stdout
                     sh """
                     docker run --rm \\
-                        -v "pytest-results:/test_output" \\
                         -e PYTHONPATH=/app \\
                         ${DOCKER_IMAGE} \\
-                        bash -c "cd /app && pytest tests/ --json-report --json-report-file=/test_output/test-results.json"
+                        bash -c "cd /app && python -m pytest tests/ --json-report --json-report-file=- | tee ${workspace}/test-results.json"
                     """
                     
-                    // Vérifier le contenu du volume
+                    // Vérifier si le fichier a été créé
+                    sh "ls -la ${workspace}/test-results.json || echo 'Fichier non trouvé'"
+                    
+                    
+                    
+                    // Afficher un résumé des résultats
                     sh """
-                    echo "===== Contenu du volume pytest-results ====="
-                    docker run --rm \\
-                        -v "pytest-results:/data" \\
-                        busybox \\
-                        find /data -type f | xargs ls -la
+                    if [ -f "${workspace}/test-results.json" ]; then
+                        echo "===== Résumé des tests ====="
+                        python3 -c 'import json, sys; data=json.load(open("${workspace}/test-results.json")); print(f"Total: {data.get(\\"summary\\", {}).get(\\"total\\", \\"N/A\\")}\\nPassed: {data.get(\\"summary\\", {}).get(\\"passed\\", \\"N/A\\")}\\nFailed: {data.get(\\"summary\\", {}).get(\\"failed\\", \\"N/A\\")}")' || echo "Impossible de parser le JSON"
+                    else
+                        echo "Fichier de résultats non trouvé"
+                    fi
                     """
-                    
-                    // Essayons une méthode différente pour récupérer le fichier
-                    sh """
-                    # Créer un répertoire pour les résultats
-                    mkdir -p ${workspace}/test-results
-                    
-                    # Copier le fichier depuis le volume vers le workspace
-                    docker run --rm \\
-                        -v "pytest-results:/data" \\
-                        -v "${workspace}/test-results:/output" \\
-                        busybox \\
-                        sh -c "find /data -name '*.json' -exec cp {} /output/ \\;"
-                    """
-                    
-                    // Vérifier si le fichier a été copié
-                    sh "ls -la ${workspace}/test-results"
-                    
-                    // Afficher le contenu s'il existe
-                    sh "if [ -f \"${workspace}/test-results/test-results.json\" ]; then cat ${workspace}/test-results/test-results.json; else echo 'Fichier toujours introuvable'; fi"
                 }
             }
         }
