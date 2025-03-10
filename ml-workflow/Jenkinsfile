@@ -32,57 +32,29 @@ pipeline {
         stage('Run Unit Tests') {
             steps {
                 script {
-                    // Créer le répertoire pour les résultats
-                    sh "mkdir -p \$(pwd)/results"
-                    
-                    // Exécuter pytest en mode verbeux et capturer la sortie texte
+                    // Exécuter pytest et rediriger directement la sortie standard
                     sh """
                     docker run --rm \\
                         -e PYTHONPATH=/app \\
                         ${DOCKER_IMAGE} \\
-                        bash -c "cd /app && python -m pytest tests/ -v" > \$(pwd)/results/test-output.txt
+                        bash -c "cd /app && pytest tests/ -v" > /tmp/test-output.txt
                     """
                     
-                    // Afficher les résultats
-                    sh "cat \$(pwd)/results/test-output.txt"
+                    // Aussi, générer le JSON avec pytest-json
+                    sh """
+                    docker run --rm \\
+                        -e PYTHONPATH=/app \\
+                        ${DOCKER_IMAGE} \\
+                        bash -c "cd /app && python -c 'import json, pytest; import io; from contextlib import redirect_stdout; f = io.StringIO(); with redirect_stdout(f): pytest.main([\"tests/\", \"--json-report\", \"--json-report-file=none\"]); report = json.loads(open(\".report.json\").read()); print(json.dumps(report))'" > /tmp/test-results.json
+                    """
                     
-                    // Créer un rapport simple en JSON avec un script shell plus robuste
-                    sh '''
-                    # Compter les tests réussis et échoués de façon fiable
-                    PASSED=$(grep -c "PASSED" $(pwd)/results/test-output.txt 2>/dev/null || echo 0)
-                    FAILED=$(grep -c "FAILED" $(pwd)/results/test-output.txt 2>/dev/null || echo 0)
-                    
-                    # Assurer que ces valeurs sont bien des nombres entiers
-                    PASSED=$(echo $PASSED | tr -cd '0-9')
-                    FAILED=$(echo $FAILED | tr -cd '0-9')
-                    TOTAL=$((PASSED + FAILED))
-                    
-                    # Générer un JSON simple
-                    echo "{" > $(pwd)/results/summary.json
-                    echo "  \\"summary\\": {" >> $(pwd)/results/summary.json
-                    echo "    \\"passed\\": $PASSED," >> $(pwd)/results/summary.json
-                    echo "    \\"failed\\": $FAILED," >> $(pwd)/results/summary.json
-                    echo "    \\"total\\": $TOTAL" >> $(pwd)/results/summary.json
-                    echo "  }" >> $(pwd)/results/summary.json
-                    echo "}" >> $(pwd)/results/summary.json
-                    
-                    # Afficher le résumé
-                    echo "===== Résumé des tests ====="
-                    echo "Tests exécutés: $TOTAL"
-                    echo "Tests réussis: $PASSED"
-                    echo "Tests échoués: $FAILED"
-                    
-                    # Afficher le JSON généré
-                    echo "===== Rapport JSON ====="
-                    cat $(pwd)/results/summary.json
-                    '''
-                    
-                    // Archiver les résultats des tests
-                    archiveArtifacts artifacts: 'results/**', allowEmptyArchive: true
+                    // Afficher les fichiers
+                    sh "echo '===== Sortie des tests =====' && cat /tmp/test-output.txt"
+                    sh "echo '===== Résumé du rapport =====' && cat /tmp/test-results.json | grep -o '\"summary\":{[^}]*}'"
                 }
             }
         }
-        
+
         stage('Verify Persistence') {
             steps {
                 script {
