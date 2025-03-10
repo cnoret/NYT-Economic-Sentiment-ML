@@ -37,7 +37,7 @@ pipeline {
                     docker run --rm \\
                         -e PYTHONPATH=/app \\
                         ${DOCKER_IMAGE} \\
-                        bash -c "cd /app && pytest tests/ --json-report --json-report-file=report.json && cat report.json" | grep -Eo "\{.*\}" > /tmp/test-results.json
+                        bash -c "cd /app && pytest tests/ --json-report --json-report-file=report.json && cat report.json" | jq '.' > /tmp/test-results.json
 
                     """
                 }
