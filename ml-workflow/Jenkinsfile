@@ -37,12 +37,12 @@ pipeline {
                     docker run --rm \\
                         -e PYTHONPATH=/app \\
                         ${DOCKER_IMAGE} \\
-                        bash -c "cd /app && pytest tests/ --json-report --json-report-file=report.json"
+                        bash -c "cd /app && pytest tests/ --json-report --json-report-file=report.json && ls -la"
         
                     docker run --rm \\
                         -e PYTHONPATH=/app \\
                         ${DOCKER_IMAGE} \\
-                        bash -c "cat /app/report.json" > /tmp/test-results.json
+                        bash -c "find /app -name report.json -exec cat {} \\;" > /tmp/test-results.json
                     """
                 }
             }
