@@ -37,13 +37,8 @@ pipeline {
                     docker run --rm \\
                         -e PYTHONPATH=/app \\
                         ${DOCKER_IMAGE} \\
-                        bash -c 'cd /app && pytest tests/ --json-report'
+                        bash -c 'cd /app && pytest tests/ --json-report; cat /app/.report.json' > /tmp/test-results.json'
                     
-                    # Obtenir le JSON dans un deuxième appel (propre)
-                    docker run --rm \\
-                        -e PYTHONPATH=/app \\
-                        ${DOCKER_IMAGE} \\
-                        bash -c 'cat .report.json' > /tmp/test-results.json'
                     """
                 }
             }
