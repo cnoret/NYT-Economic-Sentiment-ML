@@ -47,11 +47,8 @@ pipeline {
         stage('Verify Persistence') {
             steps {
                 script {
-                    // Cette commande crée un nouveau conteneur et vérifie si le fichier tests-results.json existe
                     sh """
-                    docker run --rm \
-                        ${DOCKER_IMAGE} \
-                        bash -c "ls -la /tmp/tests-results.json && echo 'Le fichier persiste entre les steps!' || echo 'Fichier non trouvé'"
+                    "ls -la /tmp/tests-results.json && echo 'Le fichier persiste entre les steps!' || echo 'Fichier non trouvé'"
                     """
                     
                 }
