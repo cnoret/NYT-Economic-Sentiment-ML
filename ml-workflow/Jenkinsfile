@@ -3,6 +3,7 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = 'nyt-economic-sentiment-ml'
+        TESTS_REPORT = 'tests-results.json'
     }
 
     stages {
@@ -37,7 +38,7 @@ pipeline {
                     docker run --rm \\
                         -e PYTHONPATH=/app \\
                         ${DOCKER_IMAGE} \\
-                        bash -c "cd /app && pytest tests/ --json-report --json-report-file=report.json && cat report.json" | grep -oP '\\{.*\\}' > /tmp/tests-results.json
+                        bash -c "cd /app && pytest tests/ --json-report --json-report-file=report.json && cat report.json" | grep -oP '\\{.*\\}' > /tmp/${TESTS_REPORT}
 
                     """
                 }
@@ -48,9 +49,9 @@ pipeline {
             steps {
                 script {
                     sh '''
-                    if [ -f /tmp/tests-results.json ]; then
+                    if [ -f /tmp/${TESTS_REPORT} ]; then
                         echo "Le fichier existe et persiste entre les steps!"
-                        ls -l /tmp/tests-results.json
+                        ls -l /tmp/${TESTS_REPORT}
                     else
                         echo "Fichier non trouvé"
                         exit 1
@@ -64,9 +65,9 @@ pipeline {
             steps {
                 script {
                     sh """
-                    cat /tmp/tests-results.json | docker run --rm -i \\
+                    cat /tmp/${TESTS_REPORT} | docker run --rm -i \\
                         ${DOCKER_IMAGE} \\
-                        bash -c "cat > /tmp/tests-results.json && python3 /app/scripts/display_tests_results.py /tmp/tests-results.json"
+                        bash -c "cat > /tmp/${TESTS_REPORT} && python3 /app/scripts/display_tests_results.py /tmp/${TESTS_REPORT}"
                     """
                 }
             }
