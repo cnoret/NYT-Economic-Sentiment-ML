@@ -31,41 +31,33 @@ pipeline {
 
         stage('Run Unit Tests') {
             steps {
-                script{
-                    sh """
+                script {
                     // Créer un volume Docker nommé
                     sh "docker volume create pytest-results"
                     
+                    // Exécuter les tests et sauvegarder les résultats dans le volume
                     sh """
-                    docker run --rm \
-                        -v "pytest-results:/test_output" \
-                        -e PYTHONPATH=/app \
-                        ${DOCKER_IMAGE} \
+                    docker run --rm \\
+                        -v "pytest-results:/test_output" \\
+                        -e PYTHONPATH=/app \\
+                        ${DOCKER_IMAGE} \\
                         bash -c "cd /app && pytest tests/ --json-report --json-report-file=/test_output/test-results.json"
                     """
                     
                     // Récupérer le contenu à l'aide d'un conteneur intermédiaire
                     sh """
-                    docker run --rm \
-                        -v "pytest-results:/data" \
-                        -v "/tmp:/output" \
-                        busybox \
+                    docker run --rm \\
+                        -v "pytest-results:/data" \\
+                        -v "/tmp:/output" \\
+                        busybox \\
                         cp /data/test-results.json /output/test-results.json
                     """
-            
-                    // Afficher le fichier
-                    sh "cat /tmp/test-results.json"
                     
-                    sh 'echo "Résultats des tests en JSON:" && cat /tmp/test-results.json'
-
-                    // Vérifier si le fichier a été créé
+                    // Vérifier si le fichier a été créé et afficher son contenu
                     sh 'ls -la /tmp/test-results.json || echo "Fichier non trouvé"'
-                    
-                    // Afficher le contenu si le fichier existe
                     sh 'if [ -f "/tmp/test-results.json" ]; then echo "Résultats des tests en JSON:"; cat /tmp/test-results.json; else echo "Fichier JSON non trouvé"; fi'
-                } 
+                }
             }
-        
         }
 
         stage('Verify Persistence') {
