@@ -40,31 +40,39 @@ pipeline {
                         bash -c 'cd /app && pytest tests/ --json-report && cat .report.json' > /tmp/test-results.json
                     """
                     
-                    // Créer un résumé plus informatif basé sur la structure du JSON
-                    sh '''
-                    if [ -f "/tmp/test-results.json" ]; then
-                        echo "===== RÉSUMÉ DES TESTS ====="
+                                // Utiliser Python pour analyser le JSON (plus fiable que grep)
+            sh """
+            docker run --rm \\
+                -v "/tmp:/tmp" \\
+                ${DOCKER_IMAGE} \\
+                bash -c 'python3 -c "
+                    import json
+                    with open(\\\"/tmp/test-results.json\\\") as f:
+                        data = json.load(f)
                         
-                        # Extraire les métriques principales
-                        PASSED=$(grep -o '"passed":[0-9]*' /tmp/test-results.json | head -1 | cut -d: -f2)
-                        TOTAL=$(grep -o '"total":[0-9]*' /tmp/test-results.json | head -1 | cut -d: -f2)
-                        DURATION=$(grep -o '"duration":[0-9.]*' /tmp/test-results.json | head -1 | cut -d: -f2)
-                        
-                        # Afficher le résumé général
-                        echo "✅ Tests réussis: $PASSED/$TOTAL"
-                        echo "⏱️ Durée totale: $DURATION secondes"
-                        
-                        # Lister les tests individuels
-                        echo ""
-                        echo "===== DÉTAILS DES TESTS ====="
-                        grep -o '"nodeid":"tests/test_train.py::[^"]*' /tmp/test-results.json | cut -d: -f3- | sed 's/"//g' | while read -r TEST; do
-                            echo "✓ $TEST"
-                        done
-                        
-                    else
-                        echo "Rapport JSON non trouvé"
-                    fi
-                    '''
+                    print(\\\"===== RÉSUMÉ DES TESTS =====\\\")
+                    passed = data.get(\\\\"summary\\\", {}).get(\\\\"passed\\\", 0)
+                    total = data.get(\\\\"summary\\\", {}).get(\\\\"total\\\", 0)
+                    duration = data.get(\\\\"duration\\\", 0)
+
+                    print(f\\\"✅ Tests réussis: {passed}/{total}\\\")
+                    print(f\\\"⏱️ Durée totale: {duration:.2f} secondes\\\\n\\\")
+
+                    print(\\\"===== DÉTAILS DES TESTS =====\\\")
+                    for test in data.get(\\\\"tests\\\", []):
+                        nodeid = test.get(\\\\"nodeid\\\", \\\"\\\")
+                        outcome = test.get(\\\\"outcome\\\", \\\"\\\")
+                        test_name = nodeid.split(\\\"::\\\")[-1] if \\\"::\\\" in nodeid else nodeid
+                        print(f\\\"{'✓' if outcome == 'passed' else '✗'} {test_name}\\\")
+
+                    print(\\\"\\\\n===== AVERTISSEMENTS =====\\\")
+                    warnings = data.get(\\\\"warnings\\\", [])
+                    if warnings:
+                        print(f\\\"⚠️ {len(warnings)} avertissement(s) détecté(s)\\\")
+                    else:
+                        print(\\\"Aucun avertissement\\\")
+                    "'
+            """
                     
                     // Archiver le rapport JSON complet pour référence future
                     sh "mkdir -p reports && cp /tmp/test-results.json reports/"
