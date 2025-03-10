@@ -42,7 +42,7 @@ pipeline {
                     docker run --rm \\
                         -e PYTHONPATH=/app \\
                         ${DOCKER_IMAGE} \\
-                        bash -c "cat /app/.report.json" > /tmp/test-results.json
+                        bash -c "cat /app/report.json" > /tmp/test-results.json
                     """
                 }
             }
