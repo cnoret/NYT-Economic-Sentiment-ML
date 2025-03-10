@@ -61,12 +61,6 @@ pipeline {
                             echo "✓ $TEST"
                         done
                         
-                        # Vérifier s'il y a des avertissements
-                        WARNINGS=$(grep -o '"warnings":\[\{' /tmp/test-results.json | wc -l)
-                        if [ "$WARNINGS" -gt 0 ]; then
-                            echo ""
-                            echo "⚠️ $WARNINGS avertissement(s) détecté(s)"
-                        fi
                     else
                         echo "Rapport JSON non trouvé"
                     fi
