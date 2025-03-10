@@ -37,19 +37,19 @@ pipeline {
                     sh "docker volume create pytest-results"
                     
                     sh """
-                    docker run --rm \\
-                        -v "pytest-results:/test_output" \\
-                        -e PYTHONPATH=/app \\
-                        ${DOCKER_IMAGE} \\
+                    docker run --rm \
+                        -v "pytest-results:/test_output" \
+                        -e PYTHONPATH=/app \
+                        ${DOCKER_IMAGE} \
                         bash -c "cd /app && pytest tests/ --json-report --json-report-file=/test_output/test-results.json"
                     """
                     
                     // Récupérer le contenu à l'aide d'un conteneur intermédiaire
                     sh """
-                    docker run --rm \\
-                        -v "pytest-results:/data" \\
-                        -v "/tmp:/output" \\
-                        busybox \\
+                    docker run --rm \
+                        -v "pytest-results:/data" \
+                        -v "/tmp:/output" \
+                        busybox \
                         cp /data/test-results.json /output/test-results.json
                     """
             
