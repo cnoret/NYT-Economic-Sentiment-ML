@@ -140,20 +140,6 @@ EOL
             // Clean up workspace and remove dangling Docker images
             sh 'docker system prune -f'
         }
-        /*success {
-            sh """
-            curl -X POST -H 'Content-type: application/json' \
-            --data '{"text":"✅ BUILD RÉUSSI: ${env.JOB_NAME} #${env.BUILD_NUMBER}"}' \
-            ${env.SLACK_WEBHOOK_CNORET}
-        """
-        }
-        failure {
-            sh """
-                curl -X POST -H 'Content-type: application/json' \
-                --data '{"text":"❌ BUILD ÉCHOUÉ: ${env.JOB_NAME} #${env.BUILD_NUMBER}"}' \
-            ${env.SLACK_WEBHOOK_CNORET}
-            """
-        }*/
         success {
             sh """
             curl -X POST -H 'Content-type: application/json' \
