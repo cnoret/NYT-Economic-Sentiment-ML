@@ -64,6 +64,7 @@ pipeline {
         stage('Display Results') {
             steps {
                 script {
+                    // commande à executer dans un shell blue-ocean : cat /tmp/tests-results.json | docker run --rm -i nyt-economic-sentiment-ml:latest bash -c "cat > /tmp/tests-results.json && python3 /app/scripts/display_tests_results.py /tmp/tests-results.json"
                     sh """
                     cat /tmp/${TESTS_REPORT} | docker run --rm -i \\
                         ${DOCKER_IMAGE} \\
